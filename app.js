@@ -19,7 +19,7 @@ function salvarCredenciais(server, user, pass) {
 }
 
 async function carregarCanais() {
-  const server = document.getElementById('server').value.trim();
+ let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
 
@@ -70,7 +70,8 @@ function reproduzirStream(url) {
 }
 
 async function exportarListaParaVLC() {
-  const server = document.getElementById('server').value.trim();
+  // Remove espacos e qualquer barra no final do URL
+  let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
 
