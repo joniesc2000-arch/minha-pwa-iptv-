@@ -1,4 +1,4 @@
-const PROXY_URL = "https://iptv-proxy.fjcmy9zbbd.workers.dev/?url=";
+const PROXY_URL = "https://iptv-proxy-vercel.vercel.app/?url=";
 
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
