@@ -69,8 +69,7 @@ function reproduzirStream(url) {
   window.location.href = "vlc://" + url;
 }
 
-async function exportarListaParaVLC() {
-  // Remove espacos e qualquer barra no final do URL
+function exportarListaParaVLC() {
   let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
@@ -82,33 +81,9 @@ async function exportarListaParaVLC() {
 
   salvarCredenciais(server, user, pass);
 
+  // Constrói o URL M3U completo do Xtream Codes
   const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
-  const proxiedM3uUrl = PROXY_URL + encodeURIComponent(m3uUrl);
 
-  try {
-    const response = await fetch(proxiedM3uUrl);
-    
-    if (!response.ok) {
-      throw new Error("Resposta inválida do servidor");
-    }
-
-    const data = await response.blob();
-    const file = new File([data], "lista_iptv.m3u", { type: "audio/x-mpegurl" });
-
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: 'Lista IPTV',
-        text: 'Importar para o VLC'
-      });
-    } else {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(data);
-      a.download = "lista_iptv.m3u";
-      a.click();
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao descarregar a lista. Verifique os dados de acesso.");
-  }
+  // Transfere o comando para o VLC descarregar a lista diretamente no iOS
+  window.location.href = "vlc://download?url=" + encodeURIComponent(m3uUrl);
 }
