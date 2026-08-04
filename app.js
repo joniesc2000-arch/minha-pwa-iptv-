@@ -69,7 +69,7 @@ function reproduzirStream(url) {
   window.location.href = "vlc://" + url;
 }
 
-async function exportarListaParaVLC() {
+function abrirNaAppNativa() {
   let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
@@ -81,36 +81,22 @@ async function exportarListaParaVLC() {
 
   salvarCredenciais(server, user, pass);
 
-  // Constrói o URL da lista completa M3U
+  // URL completo da lista M3U
   const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
 
-  // Cria um conteúdo M3U apontando para a lista remota
-  const m3uContent = `#EXTM3U\n#EXTINF:-1,Lista IPTV Xtream\n${m3uUrl}`;
-  
-  // Cria um ficheiro virtual .m3u8 no dispositivo
-  const blob = new Blob([m3uContent], { type: 'application/x-mpegurl' });
-  const file = new File([blob], "lista_iptv.m3u8", { type: 'application/x-mpegurl' });
-
-  // Tenta abrir o menu de partilha nativo do iOS
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: 'Lista IPTV',
-        text: 'Importar lista para o VLC'
-      });
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error("Erro ao partilhar:", err);
-      }
-    }
-  } else {
-    // Fallback para download direto caso a partilha não seja suportada
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = "lista_iptv.m3u8";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  // iOS (iPhone / iPad)
+  if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+    // Abre no Outplayer (Totalmente gratuito no iOS e sem anúncios de interrupção)
+    window.location.href = "outplayer://" + encodeURIComponent(m3uUrl);
+  } 
+  // Android / Android TV (com navegação web)
+  else if (/android/i.test(ua)) {
+    // Dispara uma Intent nativa do Android para abrir no leitor padrão (VLC ou similar)
+    const cleanUrl = m3uUrl.replace(/^https?:\/\//, '');
+    window.location.href = `intent://${cleanUrl}#Intent;scheme=http;type=audio/x-mpegurl;end`;
+  } 
+  else {
+    alert("Função disponível apenas para dispositivos móveis (iOS / Android).");
   }
 }
