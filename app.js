@@ -57,7 +57,7 @@ function renderizarCanais(canais, server, user, pass) {
     div.className = 'channel-item';
     div.innerText = canal.name;
 
-    // Pedimos a playlist .m3u8 (o Worker encarregar-se-á de reescrever os .ts para HTTPS)
+    // Força o formato .m3u8 para o WebKit (iOS)
     const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
 
     div.onclick = () => reproduzirStream(streamUrl);
@@ -67,22 +67,17 @@ function renderizarCanais(canais, server, user, pass) {
 
 function reproduzirStream(url) {
   const video = document.getElementById('videoPlayer');
-  
-  // Constrói a URL através do proxy Vercel em HTTPS
-  const streamUrl = `${PROXY_URL}${encodeURIComponent(url)}`;
+  const proxiedUrl = PROXY_URL + encodeURIComponent(url);
 
-  video.pause();
-  video.removeAttribute('src');
-  
-  // Atributos necessários para o leitor HTML5 no iOS Safari
+  // Atributos para o leitor HTML5 no Safari móvel
   video.setAttribute('playsinline', 'true');
   video.setAttribute('webkit-playsinline', 'true');
-
-  video.src = streamUrl;
+  
+  video.pause();
+  video.src = proxiedUrl;
   video.load();
-
-  const playPromise = video.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(e => console.log("Erro ao iniciar reprodução:", e));
-  }
+  
+  video.play().catch(err => {
+    console.log("Erro ao dar play nativo:", err);
+  });
 }
