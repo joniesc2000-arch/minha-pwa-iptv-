@@ -1,4 +1,4 @@
-const PROXY_URL = "https://corsproxy.io/?";
+const PROXY_URL = "https://iptv-proxy.fjcmy9zbbd.workers.dev/?url=";
 
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
@@ -44,7 +44,7 @@ async function carregarCanais() {
       alert("Credenciais incorretas.");
     }
   } catch (err) {
-    alert("Erro: " + err.message);
+    alert("Erro ao carregar lista: " + err.message);
   }
 }
 
@@ -57,8 +57,8 @@ function renderizarCanais(canais, server, user, pass) {
     div.className = 'channel-item';
     div.innerText = canal.name;
 
-    // Em vez de .m3u8, pede a stream direta sem extensão (Xtream Code Native Stream)
-    const streamUrl = `${server}/${user}/${pass}/${canal.stream_id}`;
+    // Pedimos a playlist .m3u8 (o Worker encarregar-se-á de reescrever os .ts para HTTPS)
+    const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
 
     div.onclick = () => reproduzirStream(streamUrl);
     container.appendChild(div);
@@ -67,9 +67,10 @@ function renderizarCanais(canais, server, user, pass) {
 
 function reproduzirStream(url) {
   const video = document.getElementById('videoPlayer');
-  
-  // Passa a stream direta pelo CorsProxy
-  video.src = PROXY_URL + encodeURIComponent(url);
+  const proxiedUrl = PROXY_URL + encodeURIComponent(url);
+
+  video.pause();
+  video.src = proxiedUrl;
   video.load();
-  video.play().catch(e => console.log(e));
+  video.play().catch(e => console.log("Erro de Autoplay:", e));
 }
