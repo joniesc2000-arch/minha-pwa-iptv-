@@ -1,44 +1,76 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PWA IPTV</title>
-  <link rel="manifest" href="manifest.json">
-  <style>
-    body { margin: 0; background-color: #121212; color: #fff; font-family: system-ui, -apple-system; }
-    video { width: 100%; max-height: 40vh; background: #000; }
-    .container { padding: 16px; }
-    input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-    .channel-list { margin-top: 15px; max-height: 40vh; overflow-y: auto; }
-    .channel-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
-  </style>
-</head>
-<body>
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
 
-  <video 
-  id="videoPlayer" 
-  controls 
-  playsinline 
-  webkit-playsinline 
-  autoplay 
-  style="width: 100%; height: 220px; background: #000;">
-</video>
+const app = express();
+app.use(cors());
 
-  <div class="container">
-    <h2>Entrar no Xtream</h2>
-    <input type="text" id="server" placeholder="http://exemplo.com:8080">
-    <input type="text" id="username" placeholder="Utilizador">
-    <input type="password" id="password" placeholder="Palavra-passe">
+app.get('/', (req, res) => {
+  res.send('Proxy de Streaming Ativo!');
+});
+
+app.get('/stream', async (req, res) => {
+  const targetUrl = req.query.url;
+
+  if (!targetUrl) {
+    return res.status(400).send('URL não fornecido.');
+  }
+
+  try {
+    // Fazer pedido ao servidor Xtream original
+    const response = await axios({
+      method: 'get',
+      url: targetUrl,
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15'
+      }
+    });
+
+    const contentType = response.headers['content-type'] || '';
     
-    <div style="display: flex; gap: 10px; margin-top: 10px;">
-      <button onclick="carregarCanais()" style="flex: 1;">Carregar Canais</button>
-      <button onclick="exportarListaParaVLC()">Exportar p/ App</button>
-    </div>
+    // Injetar cabeçalhos CORS completos para o iOS WebKit
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
 
-    <div id="channels" class="channel-list"></div>
-  </div>
+    // Se for um ficheiro M3U8 (manifesto HLS), reescreve os links internos para passarem pelo Proxy
+    if (targetUrl.endsWith('.m3u8') || contentType.includes('mpegurl') || contentType.includes('m3u8')) {
+      let content = response.data.toString('utf-8');
+      
+      // Descobre o URL base da stream
+      const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
 
-  <script src="app.js"></script>
-</body>
-</html>
+      // Linha a linha, transforma URLs HTTP relativos ou absolutos em URLs do Proxy
+      const proxyDomain = `${req.protocol}://${req.get('host')}/stream?url=`;
+      
+      const modifiedContent = content.split('\n').map(line => {
+        line = line.trim();
+        if (line && !line.startsWith('#')) {
+          let fullSegmentUrl = line;
+          if (!line.startsWith('http://') && !line.startsWith('https://')) {
+            fullSegmentUrl = baseUrl + line;
+          }
+          return proxyDomain + encodeURIComponent(fullSegmentUrl);
+        }
+        return line;
+      }).join('\n');
+
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      return res.send(modifiedContent);
+    }
+
+    // Se for um segmento de vídeo (.ts / mp4)
+    res.setHeader('Content-Type', contentType || 'video/mp2t');
+    return res.send(response.data);
+
+  } catch (error) {
+    console.error('Erro no Proxy:', error.message);
+    res.status(500).send('Erro ao carregar o fluxo.');
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Proxy a correr na porta ${PORT}`);
+});
