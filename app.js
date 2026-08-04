@@ -67,7 +67,7 @@ function reproduzirStream(url) {
 }
 
 // Nova função para enviar a lista M3U completa diretamente para o VLC
-function exportarListaParaVLC() {
+async function exportarListaParaVLC() {
   const server = document.getElementById('server').value.trim();
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
@@ -77,9 +77,29 @@ function exportarListaParaVLC() {
     return;
   }
 
-  // Gera o URL de download da lista M3U Plus no servidor Xtream Codes
+  // O próprio Xtream Codes converte a conta num ficheiro M3U completo através desta URL:
   const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
 
-  // Invoca o mecanismo de download direto do VLC no iOS
-  window.location.href = "vlc://download?url=" + encodeURIComponent(m3uUrl);
+  try {
+    // Pede ao servidor Xtream a lista completa de canais
+    const response = await fetch(m3uUrl);
+    const data = await response.blob();
+    const file = new File([data], "lista_iptv.m3u", { type: "audio/x-mpegurl" });
+
+    // Abre o menu de partilha do iPhone para enviar diretamente para a app do VLC
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'Lista IPTV',
+        text: 'Importar para o VLC'
+      });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(data);
+      a.download = "lista_iptv.m3u";
+      a.click();
+    }
+  } catch (err) {
+    alert("Erro ao gerar a lista do Xtream. Verifique os dados de acesso.");
+  }
 }
