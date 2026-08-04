@@ -65,3 +65,21 @@ function reproduzirStream(url) {
   // Abre o fluxo diretamente no leitor do VLC
   window.location.href = "vlc://" + url;
 }
+
+// Nova função para enviar a lista M3U completa diretamente para o VLC
+function exportarListaParaVLC() {
+  const server = document.getElementById('server').value.trim();
+  const user = document.getElementById('username').value.trim();
+  const pass = document.getElementById('password').value.trim();
+
+  if (!server || !user || !pass) {
+    alert("Preencha o Servidor, Utilizador e Palavra-passe primeiro.");
+    return;
+  }
+
+  // Gera o URL de download da lista M3U Plus no servidor Xtream Codes
+  const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
+
+  // Invoca o mecanismo de download direto do VLC no iOS
+  window.location.href = "vlc://download?url=" + encodeURIComponent(m3uUrl);
+}
