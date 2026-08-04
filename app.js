@@ -1,8 +1,5 @@
-// Opção 1: CorsProxy.io (suporta streaming sem limite de truncagem rápida)
 const PROXY_URL = "https://corsproxy.io/?";
 
-// Opção 2 (se a anterior estiver sobrecarregada):
-// const PROXY_URL = "https://api.allorigins.win/raw?url=";
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
@@ -44,10 +41,10 @@ async function carregarCanais() {
       localStorage.setItem('iptv_channels', JSON.stringify(canais));
       renderizarCanais(canais, server, user, pass);
     } else {
-      alert("Credenciais incorretas ou erro no servidor.");
+      alert("Credenciais incorretas.");
     }
   } catch (err) {
-    alert("Erro ao carregar lista: " + err.message);
+    alert("Erro: " + err.message);
   }
 }
 
@@ -60,8 +57,8 @@ function renderizarCanais(canais, server, user, pass) {
     div.className = 'channel-item';
     div.innerText = canal.name;
 
-    // URL do fluxo HLS
-    const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
+    // Em vez de .m3u8, pede a stream direta sem extensão (Xtream Code Native Stream)
+    const streamUrl = `${server}/${user}/${pass}/${canal.stream_id}`;
 
     div.onclick = () => reproduzirStream(streamUrl);
     container.appendChild(div);
@@ -70,14 +67,9 @@ function renderizarCanais(canais, server, user, pass) {
 
 function reproduzirStream(url) {
   const video = document.getElementById('videoPlayer');
-  const proxiedUrl = PROXY_URL + encodeURIComponent(url);
-
-  // Reprodução nativa HLS no iOS Safari
-  video.pause();
-  video.src = proxiedUrl;
-  video.load();
   
-  video.play().catch(err => {
-    console.log("Erro ao iniciar reprodução:", err);
-  });
+  // Passa a stream direta pelo CorsProxy
+  video.src = PROXY_URL + encodeURIComponent(url);
+  video.load();
+  video.play().catch(e => console.log(e));
 }
