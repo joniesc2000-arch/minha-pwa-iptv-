@@ -1,5 +1,4 @@
 const PROXY_URL = "https://iptv-proxy.fjcmy9zbbd.workers.dev/?url=";
-let hlsPlayer = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
@@ -58,7 +57,7 @@ function renderizarCanais(canais, server, user, pass) {
     div.className = 'channel-item';
     div.innerText = canal.name;
 
-    // Constrói URL direta do canal
+    // URL do fluxo HLS
     const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
 
     div.onclick = () => reproduzirStream(streamUrl);
@@ -70,44 +69,12 @@ function reproduzirStream(url) {
   const video = document.getElementById('videoPlayer');
   const proxiedUrl = PROXY_URL + encodeURIComponent(url);
 
-  // Destruir instância anterior do HLS se existir
-  if (hlsPlayer) {
-    hlsPlayer.destroy();
-  }
-
-  // 1. Tentar utilizar a biblioteca HLS.js
-  if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-    hlsPlayer = new Hls({
-      manifestLoadingTimeOut: 15000,
-      fragLoadingTimeOut: 20000,
-      enableWorker: true,
-    });
-    
-    hlsPlayer.loadSource(proxiedUrl);
-    hlsPlayer.attachMedia(video);
-    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(e => console.log("Autoplay bloqueado:", e));
-    });
-
-    hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) {
-        // Fallback: tentar formato .ts diretamente se o .m3u8 falhar
-        const tsUrl = url.replace('.m3u8', '.ts');
-        hlsPlayer.loadSource(PROXY_URL + encodeURIComponent(tsUrl));
-      }
-    });
-  } 
-  // 2. Fallback nativo para Safari/iOS
-  else {
-    video.pause();
-    video.src = proxiedUrl;
-    video.load();
-    video.play().catch(() => {
-      // Tenta a stream com terminação .ts
-      const tsUrl = url.replace('.m3u8', '.ts');
-      video.src = PROXY_URL + encodeURIComponent(tsUrl);
-      video.load();
-      video.play().catch(e => alert("Não foi possível reproduzir este canal."));
-    });
-  }
+  // Reprodução nativa HLS no iOS Safari
+  video.pause();
+  video.src = proxiedUrl;
+  video.load();
+  
+  video.play().catch(err => {
+    console.log("Erro ao iniciar reprodução:", err);
+  });
 }
