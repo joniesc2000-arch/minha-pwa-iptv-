@@ -66,7 +66,23 @@ function renderizarCanais(canais, server, user, pass) {
 }
 
 function reproduzirStream(url) {
-  // Converte o link para abrir diretamente no VLC iOS
-  const vlcUrl = "vlc://" + url;
-  window.location.href = vlcUrl;
+  const video = document.getElementById('videoPlayer');
+  
+  // Constrói a URL através do proxy Vercel em HTTPS
+  const streamUrl = `${PROXY_URL}${encodeURIComponent(url)}`;
+
+  video.pause();
+  video.removeAttribute('src');
+  
+  // Atributos necessários para o leitor HTML5 no iOS Safari
+  video.setAttribute('playsinline', 'true');
+  video.setAttribute('webkit-playsinline', 'true');
+
+  video.src = streamUrl;
+  video.load();
+
+  const playPromise = video.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(e => console.log("Erro ao iniciar reprodução:", e));
+  }
 }
