@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>IPTV Player</title>
+
+  <!-- Suporte PWA iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Web IPTV">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Player HLS -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    body { margin: 0; background-color: #121212; color: #fff; font-family: system-ui, -apple-system; }
+    video { width: 100%; max-height: 40vh; background: #000; }
+    .container { padding: 15px; }
+    input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+    .channel-list { margin-top: 15px; max-height: 40vh; overflow-y: auto; }
+    .channel-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <video id="videoPlayer" controls playsinline></video>
+
+  <div class="container">
+    <h2>Entrar no Xtream</h2>
+    <input type="text" id="server" placeholder="http://exemplo.com:8080">
+    <input type="text" id="username" placeholder="Utilizador">
+    <input type="password" id="password" placeholder="Palavra-passe">
+    <button onclick="carregarCanais()">Carregar Canais</button>
+
+    <div id="channels" class="channel-list"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
