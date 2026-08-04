@@ -1,5 +1,8 @@
-const PROXY_URL = "https://iptv-proxy.fjcmy9zbbd.workers.dev/?url=";
+// Opção 1: CorsProxy.io (suporta streaming sem limite de truncagem rápida)
+const PROXY_URL = "https://corsproxy.io/?";
 
+// Opção 2 (se a anterior estiver sobrecarregada):
+// const PROXY_URL = "https://api.allorigins.win/raw?url=";
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
