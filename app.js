@@ -57,18 +57,14 @@ function tocarCanal(server, user, pass, streamId) {
   const videoPlayer = document.getElementById('videoPlayer');
   const cleanServer = server.replace(/\/+$/, '');
 
-  // Formato HLS nativo para Safari/iOS
+  // Pedido em HLS .m3u8
   const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.m3u8`;
   const finalStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
-  // Reinicia o leitor para cancelar downloads pendentes
   videoPlayer.pause();
-  videoPlayer.removeAttribute('src');
-  videoPlayer.load();
-
-  // Atribui o novo stream
   videoPlayer.src = finalStreamUrl;
+  videoPlayer.load();
   videoPlayer.play().catch(err => {
-    console.log("Erro ao iniciar reprodução:", err);
+    console.log("Erro na reprodução:", err);
   });
 }
