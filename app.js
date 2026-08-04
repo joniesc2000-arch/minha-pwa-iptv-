@@ -1,5 +1,6 @@
 const PROXY_URL = "https://iptv-proxy-vercel.vercel.app/?url=";
 
+// Restaura os dados guardados assim que a PWA abre
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
@@ -8,14 +9,14 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedServer) document.getElementById('server').value = savedServer;
   if (savedUser) document.getElementById('username').value = savedUser;
   if (savedPass) document.getElementById('password').value = savedPass;
-
-  const savedChannels = localStorage.getItem('iptv_channels');
-  if (savedChannels) {
-    try {
-      renderizarCanais(JSON.parse(savedChannels), savedServer, savedUser, savedPass);
-    } catch (e) {}
-  }
 });
+
+// Guarda os dados no localStorage
+function salvarCredenciais(server, user, pass) {
+  localStorage.setItem('iptv_server', server);
+  localStorage.setItem('iptv_user', user);
+  localStorage.setItem('iptv_pass', pass);
+}
 
 async function carregarCanais() {
   const server = document.getElementById('server').value.trim();
@@ -26,6 +27,9 @@ async function carregarCanais() {
     alert("Preencha todos os campos.");
     return;
   }
+
+  // Guarda as credenciais para não ter de digitar novamente
+  salvarCredenciais(server, user, pass);
 
   const apiUrl = `${server}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
   const proxiedApiUrl = PROXY_URL + encodeURIComponent(apiUrl);
@@ -62,11 +66,9 @@ function renderizarCanais(canais, server, user, pass) {
 }
 
 function reproduzirStream(url) {
-  // Abre o fluxo diretamente no leitor do VLC
   window.location.href = "vlc://" + url;
 }
 
-// Nova função para enviar a lista M3U completa diretamente para o VLC
 async function exportarListaParaVLC() {
   const server = document.getElementById('server').value.trim();
   const user = document.getElementById('username').value.trim();
@@ -77,16 +79,21 @@ async function exportarListaParaVLC() {
     return;
   }
 
-  // O próprio Xtream Codes converte a conta num ficheiro M3U completo através desta URL:
+  salvarCredenciais(server, user, pass);
+
   const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
+  const proxiedM3uUrl = PROXY_URL + encodeURIComponent(m3uUrl);
 
   try {
-    // Pede ao servidor Xtream a lista completa de canais
-    const response = await fetch(m3uUrl);
+    const response = await fetch(proxiedM3uUrl);
+    
+    if (!response.ok) {
+      throw new Error("Resposta inválida do servidor");
+    }
+
     const data = await response.blob();
     const file = new File([data], "lista_iptv.m3u", { type: "audio/x-mpegurl" });
 
-    // Abre o menu de partilha do iPhone para enviar diretamente para a app do VLC
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
@@ -100,6 +107,7 @@ async function exportarListaParaVLC() {
       a.click();
     }
   } catch (err) {
-    alert("Erro ao gerar a lista do Xtream. Verifique os dados de acesso.");
+    console.error(err);
+    alert("Erro ao descarregar a lista. Verifique os dados de acesso.");
   }
 }
