@@ -75,20 +75,17 @@ function tocarCanal(server, user, pass, streamId) {
     return;
   }
 
-  // URL em formato HLS exigido pelo iOS WebKit
-  const streamUrl = `${server}/live/${user}/${pass}/${streamId}.m3u8`;
-  
-  // Se o servidor IPTV for HTTP, passa pelo proxy Vercel para converter em HTTPS
-  const finalStreamUrl = server.startsWith('http://') 
-    ? PROXY_URL + encodeURIComponent(streamUrl)
-    : streamUrl;
+  // Limpa barras / no final do endereço do servidor para evitar http://servidor//live/
+  const cleanServer = server.replace(/\/+$/, '');
+
+  // URL em formato HLS exige o formato .m3u8 no iOS
+  const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.m3u8`;
+
+  // Passa SEMPRE pelo proxy HTTPS
+  const finalStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
   videoPlayer.src = finalStreamUrl;
-  
-  videoPlayer.play().catch(error => {
-    console.log("Erro ao iniciar reprodução:", error);
-    // Tentativa de fallback direto sem proxy
-    videoPlayer.src = streamUrl;
-    videoPlayer.play().catch(e => console.log("Fallback falhou:", e));
+  videoPlayer.play().catch(err => {
+    console.log("Erro ao iniciar reprodução:", err);
   });
 }
