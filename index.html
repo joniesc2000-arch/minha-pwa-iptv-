@@ -33,6 +33,31 @@
     <input type="text" id="username" placeholder="Utilizador">
     <input type="password" id="password" placeholder="Palavra-passe">
     <button onclick="carregarCanais()">Carregar Canais</button>
+    <body>
+
+  <video id="videoPlayer" controls playsinline webkit-playsinline></video>
+
+  <div class="container">
+    <h2>Entrar no Xtream</h2>
+    <input type="text" id="server" placeholder="http://exemplo.com:8080">
+    <input type="text" id="username" placeholder="Utilizador">
+    <input type="password" id="password" placeholder="Palavra-passe">
+    
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button onclick="carregarCanais()" style="flex: 1;">Carregar Canais</button>
+      <button onclick="exportarListaParaVLC()" style="flex: 1; background-color: #e67e22; color: white;">Exportar p/ VLC</button>
+    </div>
+
+    <div id="channels" class="channel-list"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+   <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button onclick="carregarCanais()" style="flex: 1;">Carregar Canais</button>
+      <button onclick="exportarListaParaVLC()" style="flex: 1; background-color: #e67e22; color: white;">Exportar p/ VLC</button>
+    </div>
 
     <div id="channels" class="channel-list"></div>
   </div>
