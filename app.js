@@ -1,24 +1,5 @@
 const PROXY_URL = 'https://meu-projeto-node-q761.onrender.com/stream?url=';
-
-// Configura o detetor de erros de vídeo assim que a página carrega
-window.addEventListener('DOMContentLoaded', () => {
-  const videoPlayer = document.getElementById('videoPlayer');
-  if (videoPlayer) {
-    videoPlayer.onerror = () => {
-      const err = videoPlayer.error;
-      if (err) {
-        let msg = "Erro desconhecido";
-        switch (err.code) {
-          case 1: msg = "ABORTED: Reprodução cancelada."; break;
-          case 2: msg = "NETWORK: Erro de rede ao descarregar stream."; break;
-          case 3: msg = "DECODE: Erro ao descodificar o formato de áudio/vídeo."; break;
-          case 4: msg = "SRC_NOT_SUPPORTED: Formato não suportado ou 404 no Proxy."; break;
-        }
-        alert(`Erro no Video (Código ${err.code}): ${msg}`);
-      }
-    };
-  }
-});
+let hlsInstance = null;
 
 async function carregarCanais() {
   const btn = document.getElementById('btnLogin');
@@ -77,14 +58,45 @@ function tocarCanal(server, user, pass, streamId) {
   const videoPlayer = document.getElementById('videoPlayer');
   const cleanServer = server.replace(/\/+$/, '');
 
-  // Pedido em HLS .m3u8
+  // Apontar sempre para a playlist .m3u8 através do Proxy
   const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.m3u8`;
   const finalStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
-  videoPlayer.pause();
-  videoPlayer.src = finalStreamUrl;
-  videoPlayer.load();
-  videoPlayer.play().catch(err => {
-    console.log("Erro na chamada play():", err);
-  });
+  // Destruir qualquer instância HLS prévia
+  if (hlsInstance) {
+    hlsInstance.destroy();
+  }
+
+  // 1. Prioridade: Se o Hls.js for suportado no browser (MSE ativo)
+  if (Hls.isSupported()) {
+    hlsInstance = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 90
+    });
+    hlsInstance.loadSource(finalStreamUrl);
+    hlsInstance.attachMedia(videoPlayer);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      videoPlayer.play().catch(e => console.log("Erro no play:", e));
+    });
+    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) {
+        console.error("Erro fatal no HLS.js:", data);
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          hlsInstance.startLoad();
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hlsInstance.recoverMediaError();
+        } else {
+          hlsInstance.destroy();
+        }
+      }
+    });
+  } 
+  // 2. Fallback: Suporte HLS nativo do WebKit/Safari
+  else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+    videoPlayer.src = finalStreamUrl;
+    videoPlayer.play().catch(e => console.log("Erro no play nativo:", e));
+  } else {
+    alert("O seu leitor não suporta este formato de transmissão.");
+  }
 }
