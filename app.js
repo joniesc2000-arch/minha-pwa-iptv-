@@ -1,6 +1,6 @@
 const PROXY_URL = "https://iptv-proxy-vercel.vercel.app/?url=";
 
-// Restaura os dados guardados assim que a PWA abre
+// Restaura as credenciais salvas ao abrir a app
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
@@ -11,7 +11,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedPass) document.getElementById('password').value = savedPass;
 });
 
-// Guarda os dados no localStorage
 function salvarCredenciais(server, user, pass) {
   localStorage.setItem('iptv_server', server);
   localStorage.setItem('iptv_user', user);
@@ -19,7 +18,7 @@ function salvarCredenciais(server, user, pass) {
 }
 
 async function carregarCanais() {
- let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
+  let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
 
@@ -28,7 +27,6 @@ async function carregarCanais() {
     return;
   }
 
-  // Guarda as credenciais para não ter de digitar novamente
   salvarCredenciais(server, user, pass);
 
   const apiUrl = `${server}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
@@ -41,7 +39,7 @@ async function carregarCanais() {
     if (Array.isArray(data)) {
       renderizarCanais(data, server, user, pass);
     } else {
-      alert("Erro ao obter lista de canais. Verifique os dados de acesso.");
+      alert("Erro ao obter lista de canais. Verifique os dados.");
     }
   } catch (err) {
     console.error(err);
@@ -59,17 +57,13 @@ function renderizarCanais(canais, server, user, pass) {
     div.innerText = canal.name;
 
     const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.ts`;
-
-    div.onclick = () => reproduzirStream(streamUrl);
+    div.onclick = () => window.location.href = "vlc://" + streamUrl;
     container.appendChild(div);
   });
 }
 
-function reproduzirStream(url) {
-  window.location.href = "vlc://" + url;
-}
-
-function abrirNaAppNativa() {
+// Função de exportação / abertura nativa
+function exportarListaParaVLC() {
   let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
   const pass = document.getElementById('password').value.trim();
@@ -81,22 +75,20 @@ function abrirNaAppNativa() {
 
   salvarCredenciais(server, user, pass);
 
-  // URL completo da lista M3U
   const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
   const ua = navigator.userAgent || navigator.vendor || window.opera;
 
-  // iOS (iPhone / iPad)
+  // iOS
   if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
-    // Abre no Outplayer (Totalmente gratuito no iOS e sem anúncios de interrupção)
-    window.location.href = "outplayer://" + encodeURIComponent(m3uUrl);
+    // Tenta abrir no Outplayer
+    window.location.href = "outplayer://" + m3uUrl;
   } 
-  // Android / Android TV (com navegação web)
+  // Android
   else if (/android/i.test(ua)) {
-    // Dispara uma Intent nativa do Android para abrir no leitor padrão (VLC ou similar)
     const cleanUrl = m3uUrl.replace(/^https?:\/\//, '');
     window.location.href = `intent://${cleanUrl}#Intent;scheme=http;type=audio/x-mpegurl;end`;
   } 
   else {
-    alert("Função disponível apenas para dispositivos móveis (iOS / Android).");
+    alert("Função disponível apenas para telemóveis (iOS / Android).");
   }
 }
