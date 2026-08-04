@@ -1,5 +1,4 @@
 const PROXY_URL = 'https://meu-projeto-node-q761.onrender.com/stream?url=';
-let hlsInstance = null;
 
 async function carregarCanais() {
   const btn = document.getElementById('btnLogin');
@@ -58,32 +57,18 @@ function tocarCanal(server, user, pass, streamId) {
   const videoPlayer = document.getElementById('videoPlayer');
   const cleanServer = server.replace(/\/+$/, '');
 
-  // Usamos o formato direto do Xtream
-  const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.ts`;
+  // Formato HLS nativo para Safari/iOS
+  const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.m3u8`;
   const finalStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
-  // Limpa instância HLS anterior se existir
-  if (hlsInstance) {
-    hlsInstance.destroy();
-  }
+  // Reinicia o leitor para cancelar downloads pendentes
+  videoPlayer.pause();
+  videoPlayer.removeAttribute('src');
+  videoPlayer.load();
 
-  // Tenta reproduzir via HLS.js se suportado
-  if (Hls.isSupported()) {
-    hlsInstance = new Hls({
-      enableWorker: true,
-      lowLatencyMode: true
-    });
-    hlsInstance.loadSource(finalStreamUrl);
-    hlsInstance.attachMedia(videoPlayer);
-    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-      videoPlayer.play().catch(e => console.log(e));
-    });
-  } 
-  // Fallback para o leitor nativo do iOS Safari
-  else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-    videoPlayer.src = finalStreamUrl;
-    videoPlayer.play().catch(e => console.log(e));
-  } else {
-    alert("O seu navegador não suporta a reprodução deste formato.");
-  }
+  // Atribui o novo stream
+  videoPlayer.src = finalStreamUrl;
+  videoPlayer.play().catch(err => {
+    console.log("Erro ao iniciar reprodução:", err);
+  });
 }
