@@ -1,45 +1,38 @@
-const PROXY_URL = "https://meu-projeto-node-q761.onrender.com/stream?url=";
-// Restaura credenciais salvas no carregamento
-window.addEventListener('DOMContentLoaded', () => {
-  const savedServer = localStorage.getItem('iptv_server');
-  const savedUser = localStorage.getItem('iptv_user');
-  const savedPass = localStorage.getItem('iptv_pass');
+const PROXY_URL = 'https://meu-projeto-node-q761.onrender.com/stream?url=';
+let hlsInstance = null;
 
-  if (savedServer) document.getElementById('server').value = savedServer;
-  if (savedUser) document.getElementById('username').value = savedUser;
-  if (savedPass) document.getElementById('password').value = savedPass;
-});
-
-function salvarCredenciais(server, user, pass) {
-  localStorage.setItem('iptv_server', server);
-  localStorage.setItem('iptv_user', user);
-  localStorage.setItem('iptv_pass', pass);
-}
-
-// 1. Obter a lista de canais via Proxy
 async function carregarCanais() {
-  const server = document.getElementById('server').value.trim();
-  const user = document.getElementById('username').value.trim();
-  const pass = document.getElementById('password').value.trim();
+  const btn = document.getElementById('btnLogin');
+  const serverInput = document.getElementById('server');
+  const userInput = document.getElementById('username');
+  const passInput = document.getElementById('password');
+
+  const server = serverInput.value.trim();
+  const user = userInput.value.trim();
+  const pass = passInput.value.trim();
 
   if (!server || !user || !pass) {
     alert("Preencha todos os campos!");
     return;
   }
 
+  btn.innerText = "A carregar...";
+  btn.disabled = true;
+
   const cleanServer = server.replace(/\/+$/, '');
   const apiUrl = `${cleanServer}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
-  
-  // Passa o pedido da lista de canais pelo Proxy para evitar bloqueios de CORS/HTTPS
   const finalUrl = PROXY_URL + encodeURIComponent(apiUrl);
 
   try {
     const res = await fetch(finalUrl);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
     const canais = await res.json();
     renderizarCanais(canais, cleanServer, user, pass);
   } catch (err) {
-    alert("Erro ao carregar canais. Verifique os dados ou o proxy.");
-    console.error(err);
+    alert("Erro ao carregar lista de canais: " + err.message);
+  } finally {
+    btn.innerText = "Carregar Canais";
+    btn.disabled = false;
   }
 }
 
@@ -47,8 +40,8 @@ function renderizarCanais(canais, server, user, pass) {
   const container = document.getElementById('channels');
   container.innerHTML = '';
 
-  if (!Array.isArray(canais)) {
-    container.innerHTML = '<p>Nenhum canal encontrado ou dados incorretos.</p>';
+  if (!Array.isArray(canais) || canais.length === 0) {
+    container.innerHTML = '<p style="text-align:center;">Nenhum canal encontrado.</p>';
     return;
   }
 
@@ -64,10 +57,33 @@ function renderizarCanais(canais, server, user, pass) {
 function tocarCanal(server, user, pass, streamId) {
   const videoPlayer = document.getElementById('videoPlayer');
   const cleanServer = server.replace(/\/+$/, '');
-  
-  const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.m3u8`;
+
+  // Usamos o formato direto do Xtream
+  const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.ts`;
   const finalStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
-  videoPlayer.src = finalStreamUrl;
-  videoPlayer.play().catch(err => console.log("Erro na reprodução:", err));
+  // Limpa instância HLS anterior se existir
+  if (hlsInstance) {
+    hlsInstance.destroy();
+  }
+
+  // Tenta reproduzir via HLS.js se suportado
+  if (Hls.isSupported()) {
+    hlsInstance = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true
+    });
+    hlsInstance.loadSource(finalStreamUrl);
+    hlsInstance.attachMedia(videoPlayer);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      videoPlayer.play().catch(e => console.log(e));
+    });
+  } 
+  // Fallback para o leitor nativo do iOS Safari
+  else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+    videoPlayer.src = finalStreamUrl;
+    videoPlayer.play().catch(e => console.log(e));
+  } else {
+    alert("O seu navegador não suporta a reprodução deste formato.");
+  }
 }
