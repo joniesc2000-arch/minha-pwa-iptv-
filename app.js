@@ -1,6 +1,6 @@
 const PROXY_URL = "https://iptv-proxy-vercel.vercel.app/?url=";
 
-// Restaura as credenciais salvas ao abrir a app
+// Restaura credenciais salvas
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
@@ -17,6 +17,7 @@ function salvarCredenciais(server, user, pass) {
   localStorage.setItem('iptv_pass', pass);
 }
 
+// 1. Carrega a lista de canais da API Xtream Codes
 async function carregarCanais() {
   let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
@@ -29,6 +30,7 @@ async function carregarCanais() {
 
   salvarCredenciais(server, user, pass);
 
+  // Pedido à API do Xtream Codes para obter os canais em direto
   const apiUrl = `${server}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
   const proxiedApiUrl = PROXY_URL + encodeURIComponent(apiUrl);
 
@@ -39,56 +41,42 @@ async function carregarCanais() {
     if (Array.isArray(data)) {
       renderizarCanais(data, server, user, pass);
     } else {
-      alert("Erro ao obter lista de canais. Verifique os dados.");
+      alert("Erro ao obter canais. Verifique se os dados estão corretos.");
     }
   } catch (err) {
     console.error(err);
-    alert("Falha na ligação ao servidor.");
+    alert("Falha na ligação ao servidor IPTV.");
   }
 }
 
+// 2. Apresenta a lista de canais no ecrã
 function renderizarCanais(canais, server, user, pass) {
   const container = document.getElementById('channels');
   container.innerHTML = '';
 
-  canais.forEach(canal => {
+  // Filtra ou exibe os canais
+  canais.slice(0, 100).forEach(canal => { // Limite inicial para performance
     const div = document.createElement('div');
     div.className = 'channel-item';
+    div.style.padding = '12px';
+    div.style.borderBottom = '1px solid #333';
+    div.style.cursor = 'pointer';
     div.innerText = canal.name;
 
-    const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.ts`;
-    div.onclick = () => window.location.href = "vlc://" + streamUrl;
+    // Quando o cliente clica no canal, reproduz no leitor do topo
+    div.onclick = () => tocarCanal(server, user, pass, canal.stream_id);
     container.appendChild(div);
   });
 }
 
-// Função de exportação / abertura nativa
-function exportarListaParaVLC() {
-  let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
-  const user = document.getElementById('username').value.trim();
-  const pass = document.getElementById('password').value.trim();
+// 3. Reproduz o canal diretamente no elemento <video> da PWA
+function tocarCanal(server, user, pass, streamId) {
+  const videoPlayer = document.getElementById('videoPlayer'); // Garantir que tem <video id="videoPlayer" controls></video> no HTML
+  
+  // URL de reprodução em HLS / M3U8 ou TS
+  const streamUrl = `${server}/live/${user}/${pass}/${streamId}.m3u8`;
+  const proxiedStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
-  if (!server || !user || !pass) {
-    alert("Preencha o Servidor, Utilizador e Palavra-passe primeiro.");
-    return;
-  }
-
-  salvarCredenciais(server, user, pass);
-
-  const m3uUrl = `${server}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`;
-  const ua = navigator.userAgent || navigator.vendor || window.opera;
-
-  // iOS
-  if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
-    // Tenta abrir no Outplayer
-    window.location.href = "outplayer://" + m3uUrl;
-  } 
-  // Android
-  else if (/android/i.test(ua)) {
-    const cleanUrl = m3uUrl.replace(/^https?:\/\//, '');
-    window.location.href = `intent://${cleanUrl}#Intent;scheme=http;type=audio/x-mpegurl;end`;
-  } 
-  else {
-    alert("Função disponível apenas para telemóveis (iOS / Android).");
-  }
+  videoPlayer.src = proxiedStreamUrl;
+  videoPlayer.play().catch(e => console.log("Erro ao iniciar reprodução:", e));
 }
