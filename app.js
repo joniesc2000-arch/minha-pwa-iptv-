@@ -66,23 +66,7 @@ function renderizarCanais(canais, server, user, pass) {
 }
 
 function reproduzirStream(url) {
-  const video = document.getElementById('videoPlayer');
-  const proxiedUrl = PROXY_URL + encodeURIComponent(url);
-
-  video.pause();
-  video.removeAttribute('src'); // Limpa a fonte anterior
-  
-  // Atributos cruciais para o Safari iOS
-  video.setAttribute('playsinline', 'true');
-  video.setAttribute('webkit-playsinline', 'true');
-  
-  video.src = proxiedUrl;
-  video.load();
-  
-  const playPromise = video.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(error => {
-      console.log("Autoplay bloqueado ou erro de leitor:", error);
-    });
-  }
+  // Converte o link para abrir diretamente no VLC iOS
+  const vlcUrl = "vlc://" + url;
+  window.location.href = vlcUrl;
 }
