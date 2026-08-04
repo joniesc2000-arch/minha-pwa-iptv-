@@ -1,6 +1,6 @@
 const PROXY_URL = "https://iptv-proxy-vercel.vercel.app/?url=";
 
-// Restaura credenciais guardadas
+// Restaura credenciais salvas no carregamento
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
@@ -17,7 +17,7 @@ function salvarCredenciais(server, user, pass) {
   localStorage.setItem('iptv_pass', pass);
 }
 
-// 1. Obter a lista de canais
+// 1. Obter a lista de canais via Proxy
 async function carregarCanais() {
   let server = document.getElementById('server').value.trim().replace(/\/+$/, '');
   const user = document.getElementById('username').value.trim();
@@ -40,15 +40,15 @@ async function carregarCanais() {
     if (Array.isArray(data)) {
       renderizarCanais(data, server, user, pass);
     } else {
-      alert("Erro nas credenciais ou resposta inválida do servidor.");
+      alert("Erro nas credenciais ou dados inválidos.");
     }
   } catch (err) {
     console.error(err);
-    alert("Falha na ligação ao proxy/servidor.");
+    alert("Falha na ligação ao servidor.");
   }
 }
 
-// 2. Renderizar a lista de canais com evento de clique corrigido
+// 2. Apresentar os canais na lista
 function renderizarCanais(canais, server, user, pass) {
   const container = document.getElementById('channels');
   container.innerHTML = '';
@@ -61,13 +61,13 @@ function renderizarCanais(canais, server, user, pass) {
     div.style.cursor = 'pointer';
     div.innerText = canal.name;
 
-    // Associa o clique à reprodução nativa HLS (.m3u8)
+    // Ação ao clicar no canal
     div.onclick = () => tocarCanal(server, user, pass, canal.stream_id);
     container.appendChild(div);
   });
 }
 
-// 3. Reprodução compatível com iOS WebKit
+// 3. Reprodução compatível com iOS (HLS)
 function tocarCanal(server, user, pass, streamId) {
   const videoPlayer = document.getElementById('videoPlayer');
 
@@ -76,20 +76,20 @@ function tocarCanal(server, user, pass, streamId) {
     return;
   }
 
-  // No iOS é obrigatório utilizar a extensão .m3u8 para reprodução nativa
+  // URL em formato HLS exigido pelo iOS WebKit
   const streamUrl = `${server}/live/${user}/${pass}/${streamId}.m3u8`;
-  const proxiedStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
-
-  videoPlayer.src = proxiedStreamUrl;
   
-  // Tenta iniciar o vídeo
-  const playPromise = videoPlayer.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(error => {
-      console.log("Erro de autopreview/reprodução:", error);
-      // Tentativa de fallback direto caso o proxy barre o cabeçalho HLS
-      videoPlayer.src = streamUrl;
-      videoPlayer.play().catch(e => console.log("Fallback HTTP falhou:", e));
-    });
-  }
+  // Se o servidor IPTV for HTTP, passa pelo proxy Vercel para converter em HTTPS
+  const finalStreamUrl = server.startsWith('http://') 
+    ? PROXY_URL + encodeURIComponent(streamUrl)
+    : streamUrl;
+
+  videoPlayer.src = finalStreamUrl;
+  
+  videoPlayer.play().catch(error => {
+    console.log("Erro ao iniciar reprodução:", error);
+    // Tentativa de fallback direto sem proxy
+    videoPlayer.src = streamUrl;
+    videoPlayer.play().catch(e => console.log("Fallback falhou:", e));
+  });
 }
