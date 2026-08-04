@@ -58,45 +58,33 @@ function tocarCanal(server, user, pass, streamId) {
   const videoPlayer = document.getElementById('videoPlayer');
   const cleanServer = server.replace(/\/+$/, '');
 
-  // Apontar sempre para a playlist .m3u8 através do Proxy
   const streamUrl = `${cleanServer}/live/${user}/${pass}/${streamId}.m3u8`;
   const finalStreamUrl = PROXY_URL + encodeURIComponent(streamUrl);
 
-  // Destruir qualquer instância HLS prévia
   if (hlsInstance) {
     hlsInstance.destroy();
   }
 
-  // 1. Prioridade: Se o Hls.js for suportado no browser (MSE ativo)
+  // Se o browser suportar HLS.js (MediaSource)
   if (Hls.isSupported()) {
     hlsInstance = new Hls({
       enableWorker: true,
       lowLatencyMode: true,
-      backBufferLength: 90
+      maxBufferLength: 30
     });
     hlsInstance.loadSource(finalStreamUrl);
     hlsInstance.attachMedia(videoPlayer);
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
       videoPlayer.play().catch(e => console.log("Erro no play:", e));
     });
-    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) {
-        console.error("Erro fatal no HLS.js:", data);
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          hlsInstance.startLoad();
-        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          hlsInstance.recoverMediaError();
-        } else {
-          hlsInstance.destroy();
-        }
-      }
-    });
   } 
-  // 2. Fallback: Suporte HLS nativo do WebKit/Safari
+  // Fallback direto para o leitor nativo do Safari no iOS
   else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
     videoPlayer.src = finalStreamUrl;
-    videoPlayer.play().catch(e => console.log("Erro no play nativo:", e));
+    videoPlayer.addEventListener('loadedmetadata', () => {
+      videoPlayer.play().catch(e => console.log("Erro no play nativo:", e));
+    }, { once: true });
   } else {
-    alert("O seu leitor não suporta este formato de transmissão.");
+    alert("Navegador incompatível com HLS.");
   }
 }
