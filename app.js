@@ -70,7 +70,19 @@ function reproduzirStream(url) {
   const proxiedUrl = PROXY_URL + encodeURIComponent(url);
 
   video.pause();
+  video.removeAttribute('src'); // Limpa a fonte anterior
+  
+  // Atributos cruciais para o Safari iOS
+  video.setAttribute('playsinline', 'true');
+  video.setAttribute('webkit-playsinline', 'true');
+  
   video.src = proxiedUrl;
   video.load();
-  video.play().catch(e => console.log("Erro de Autoplay:", e));
+  
+  const playPromise = video.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(error => {
+      console.log("Autoplay bloqueado ou erro de leitor:", error);
+    });
+  }
 }
