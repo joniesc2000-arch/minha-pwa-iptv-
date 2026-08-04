@@ -81,3 +81,32 @@ function reproduzirStream(url) {
     console.log("Erro ao dar play nativo:", err);
   });
 }
+function reproduzirM3u8Direto() {
+  const urlInput = document.getElementById('m3u8Url').value.trim();
+
+  if (!urlInput) {
+    alert("Por favor, insira um link M3U8 válido.");
+    return;
+  }
+
+  // Se o link for HTTP, passa pelo proxy Vercel para garantir HTTPS no iOS
+  let streamUrl = urlInput;
+  if (streamUrl.startsWith('http://')) {
+    streamUrl = PROXY_URL + encodeURIComponent(streamUrl);
+  }
+
+  const video = document.getElementById('videoPlayer');
+  
+  video.pause();
+  video.removeAttribute('src');
+
+  video.setAttribute('playsinline', 'true');
+  video.setAttribute('webkit-playsinline', 'true');
+
+  video.src = streamUrl;
+  video.load();
+
+  video.play().catch(err => {
+    console.log("Erro ao iniciar reprodução nativa:", err);
+  });
+}
