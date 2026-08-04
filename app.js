@@ -1,5 +1,4 @@
-const PROXY_URL = "https://iptv-proxy-vercel.vercel.app/?url=";
-
+const PROXY_URL = "https://meu-projeto-node-q761.onrender.com/stream?url=";
 // Restaura credenciais salvas no carregamento
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
