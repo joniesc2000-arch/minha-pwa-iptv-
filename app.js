@@ -18,33 +18,30 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function carregarCanais() {
-  const server = document.getElementById('server').value.replace(/\/$/, '');
-  const user = document.getElementById('username').value;
-  const pass = document.getElementById('password').value;
+  const server = document.getElementById('server').value.trim();
+  const user = document.getElementById('username').value.trim();
+  const pass = document.getElementById('password').value.trim();
 
   if (!server || !user || !pass) {
     alert("Preencha todos os campos.");
     return;
   }
 
-  localStorage.setItem('iptv_server', server);
-  localStorage.setItem('iptv_user', user);
-  localStorage.setItem('iptv_pass', pass);
-
   const apiUrl = `${server}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
+  const proxiedApiUrl = PROXY_URL + encodeURIComponent(apiUrl);
 
   try {
-    const res = await fetch(PROXY_URL + encodeURIComponent(apiUrl));
-    const canais = await res.json();
+    const response = await fetch(proxiedApiUrl);
+    const data = await response.json();
 
-    if (Array.isArray(canais)) {
-      localStorage.setItem('iptv_channels', JSON.stringify(canais));
-      renderizarCanais(canais, server, user, pass);
+    if (Array.isArray(data)) {
+      renderizarCanais(data, server, user, pass);
     } else {
-      alert("Credenciais incorretas.");
+      alert("Erro ao obter lista de canais. Verifique os dados de acesso.");
     }
   } catch (err) {
-    alert("Erro ao carregar lista: " + err.message);
+    console.error(err);
+    alert("Falha na ligação ao servidor.");
   }
 }
 
@@ -57,8 +54,7 @@ function renderizarCanais(canais, server, user, pass) {
     div.className = 'channel-item';
     div.innerText = canal.name;
 
-    // Força o formato .m3u8 para o WebKit (iOS)
-    const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
+    const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.ts`;
 
     div.onclick = () => reproduzirStream(streamUrl);
     container.appendChild(div);
@@ -66,47 +62,6 @@ function renderizarCanais(canais, server, user, pass) {
 }
 
 function reproduzirStream(url) {
-  const video = document.getElementById('videoPlayer');
-  const proxiedUrl = PROXY_URL + encodeURIComponent(url);
-
-  // Atributos para o leitor HTML5 no Safari móvel
-  video.setAttribute('playsinline', 'true');
-  video.setAttribute('webkit-playsinline', 'true');
-  
-  video.pause();
-  video.src = proxiedUrl;
-  video.load();
-  
-  video.play().catch(err => {
-    console.log("Erro ao dar play nativo:", err);
-  });
-}
-function reproduzirM3u8Direto() {
-  const urlInput = document.getElementById('m3u8Url').value.trim();
-
-  if (!urlInput) {
-    alert("Por favor, insira um link M3U8 válido.");
-    return;
-  }
-
-  // Se o link for HTTP, passa pelo proxy Vercel para garantir HTTPS no iOS
-  let streamUrl = urlInput;
-  if (streamUrl.startsWith('http://')) {
-    streamUrl = PROXY_URL + encodeURIComponent(streamUrl);
-  }
-
-  const video = document.getElementById('videoPlayer');
-  
-  video.pause();
-  video.removeAttribute('src');
-
-  video.setAttribute('playsinline', 'true');
-  video.setAttribute('webkit-playsinline', 'true');
-
-  video.src = streamUrl;
-  video.load();
-
-  video.play().catch(err => {
-    console.log("Erro ao iniciar reprodução nativa:", err);
-  });
+  // Abre o fluxo diretamente no leitor do VLC
+  window.location.href = "vlc://" + url;
 }
