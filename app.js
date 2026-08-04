@@ -1,5 +1,25 @@
 const PROXY_URL = 'https://meu-projeto-node-q761.onrender.com/stream?url=';
 
+// Configura o detetor de erros de vídeo assim que a página carrega
+window.addEventListener('DOMContentLoaded', () => {
+  const videoPlayer = document.getElementById('videoPlayer');
+  if (videoPlayer) {
+    videoPlayer.onerror = () => {
+      const err = videoPlayer.error;
+      if (err) {
+        let msg = "Erro desconhecido";
+        switch (err.code) {
+          case 1: msg = "ABORTED: Reprodução cancelada."; break;
+          case 2: msg = "NETWORK: Erro de rede ao descarregar stream."; break;
+          case 3: msg = "DECODE: Erro ao descodificar o formato de áudio/vídeo."; break;
+          case 4: msg = "SRC_NOT_SUPPORTED: Formato não suportado ou 404 no Proxy."; break;
+        }
+        alert(`Erro no Video (Código ${err.code}): ${msg}`);
+      }
+    };
+  }
+});
+
 async function carregarCanais() {
   const btn = document.getElementById('btnLogin');
   const serverInput = document.getElementById('server');
@@ -65,6 +85,6 @@ function tocarCanal(server, user, pass, streamId) {
   videoPlayer.src = finalStreamUrl;
   videoPlayer.load();
   videoPlayer.play().catch(err => {
-    console.log("Erro na reprodução:", err);
+    console.log("Erro na chamada play():", err);
   });
 }
