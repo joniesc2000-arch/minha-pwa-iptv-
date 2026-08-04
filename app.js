@@ -1,6 +1,5 @@
 const PROXY_URL = "https://iptv-proxy.fjcmy9zbbd.workers.dev/?url=";
 
-// Carregar dados salvos ao abrir a app
 window.addEventListener('DOMContentLoaded', () => {
   const savedServer = localStorage.getItem('iptv_server');
   const savedUser = localStorage.getItem('iptv_user');
@@ -10,15 +9,11 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedUser) document.getElementById('username').value = savedUser;
   if (savedPass) document.getElementById('password').value = savedPass;
 
-  // Se já houver canais em memória, carrega automaticamente
   const savedChannels = localStorage.getItem('iptv_channels');
   if (savedChannels) {
     try {
-      const canais = JSON.parse(savedChannels);
-      renderizarCanais(canais, savedServer, savedUser, savedPass);
-    } catch (e) {
-      console.error("Erro ao carregar canais salvos", e);
-    }
+      renderizarCanais(JSON.parse(savedChannels), savedServer, savedUser, savedPass);
+    } catch (e) {}
   }
 });
 
@@ -32,7 +27,6 @@ async function carregarCanais() {
     return;
   }
 
-  // Guardar credenciais no armazenamento local
   localStorage.setItem('iptv_server', server);
   localStorage.setItem('iptv_user', user);
   localStorage.setItem('iptv_pass', pass);
@@ -50,7 +44,7 @@ async function carregarCanais() {
       alert("Credenciais incorretas ou erro na resposta do servidor.");
     }
   } catch (err) {
-    alert("Erro ao carregar lista de canais: " + err.message);
+    alert("Erro ao carregar lista: " + err.message);
   }
 }
 
@@ -63,56 +57,32 @@ function renderizarCanais(canais, server, user, pass) {
     div.className = 'channel-item';
     div.innerText = canal.name;
 
-    // Tenta primeiro o formato HLS (.m3u8), comum em Xtream Codes
-    const streamUrlHls = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
-    // Formato alternativo MPEG-TS (.ts)
-    const streamUrlTs = `${server}/live/${user}/${pass}/${canal.stream_id}.ts`;
+    // Estrutura padronizada Xtream
+    const streamUrl = `${server}/live/${user}/${pass}/${canal.stream_id}.m3u8`;
 
-    div.onclick = () => reproduzirStream(streamUrlHls, streamUrlTs);
+    div.onclick = () => reproduzirStream(streamUrl);
     container.appendChild(div);
   });
 }
 
-function reproduzirStream(urlHls, urlTs) {
+function reproduzirStream(url) {
   const video = document.getElementById('videoPlayer');
-  const proxiedHls = PROXY_URL + encodeURIComponent(urlHls);
-  const proxiedTs = PROXY_URL + encodeURIComponent(urlTs);
+  const proxiedUrl = PROXY_URL + encodeURIComponent(url);
 
-  // 1. Tentar via HLS.js (se suportado na PWA)
-  if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-    if (window.hlsInstance) {
-      window.hlsInstance.destroy();
-    }
-    const hls = new Hls({
-      enableWorker: true,
-      lowLatencyMode: true
+  // No Safari iOS, atribuir diretamente ao src ativa o descodificador de hardware nativo de HLS
+  video.pause();
+  video.src = proxiedUrl;
+  video.load();
+  
+  const playPromise = video.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(error => {
+      console.log("Erro de reprodução nativa, tentando fallback TS:", error);
+      // Fallback para formato direct TS se o m3u8 não for fornecido pelo servidor Xtream
+      const tsUrl = url.replace('.m3u8', '.ts');
+      video.src = PROXY_URL + encodeURIComponent(tsUrl);
+      video.load();
+      video.play().catch(() => alert("Servidor sem sinal neste canal ou bloqueio de stream."));
     });
-    window.hlsInstance = hls;
-    hls.loadSource(proxiedHls);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {});
-    });
-    
-    // Se o formato .m3u8 falhar no hls.js, tenta o .ts nativo
-    hls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) {
-        hls.destroy();
-        video.src = proxiedTs;
-        video.play().catch(() => {});
-      }
-    });
-  } 
-  // 2. Tentar suporte nativo do Safari (iOS)
-  else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = proxiedHls;
-    video.play().catch(() => {
-      // Caso o .m3u8 não responda, altera para a stream .ts
-      video.src = proxiedTs;
-      video.play().catch(() => alert("Não foi possível reproduzir este canal."));
-    });
-  } else {
-    video.src = proxiedTs;
-    video.play().catch(() => {});
   }
 }
