@@ -1,7 +1,7 @@
 {
   "name": "IPTV Web Player",
   "short_name": "IPTV",
-  "start_url": "/",
+  "start_url": "/minha-pwa-iptv-/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#121212",
